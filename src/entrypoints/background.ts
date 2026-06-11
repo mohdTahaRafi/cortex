@@ -154,6 +154,18 @@ registerHandler("PING", (_payload, _sender, sendResponse) => {
   sendResponse({ pong: true });
 });
 
+registerHandler("OPEN_SIDE_PANEL", async (_payload, sender, sendResponse) => {
+  try {
+    const windowId = sender.tab?.windowId || (await chrome.windows.getCurrent()).id;
+    if (windowId !== undefined) {
+      await chrome.sidePanel.open({ windowId });
+    }
+    sendResponse({ ok: true });
+  } catch (e) {
+    sendResponse({ error: String(e) });
+  }
+});
+
 // ─── Entry Point ────────────────────────────────────────────────────────────
 
 export default defineBackground(() => {

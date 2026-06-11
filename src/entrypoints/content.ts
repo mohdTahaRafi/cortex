@@ -33,7 +33,7 @@ import { initFontOverride } from "@/features/font-override";
 import { initColorProfile } from "@/features/color-profile";
 import { initSimplify } from "@/features/simplify";
 import { initRuler, setRulerEnabled, isRulerEnabled } from "@/features/ruler";
-import { initReadMode, setReadModeEnabled, isReadModeEnabled } from "@/features/read-mode";
+import { initReadMode, setReadModeEnabled, isReadModeEnabled, setReadModeContent } from "@/features/read-mode";
 import { initDictionary } from "@/features/dictionary";
 
 export default defineContentScript({
@@ -67,6 +67,10 @@ export default defineContentScript({
 
         case "SET_READ_MODE_ENABLED":
           setReadModeEnabled(msg.value as boolean);
+          break;
+
+        case "SET_READ_MODE_CONTENT":
+          setReadModeContent(msg.title as string, msg.content as string);
           break;
 
         case "GET_ACCESSIBILITY_SCORE":

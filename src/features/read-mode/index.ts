@@ -11,10 +11,19 @@ import * as tts from "./tts";
 
 let readModeEnabled = false;
 let readModeEl: HTMLDivElement | null = null;
+let customContent: { title: string; html: string } | null = null;
 
 export function isReadModeEnabled(): boolean { return readModeEnabled; }
 export function setReadModeEnabled(v: boolean): void { readModeEnabled = v; applyReadMode(); }
 export function getReadModeEl(): HTMLDivElement | null { return readModeEl; }
+
+export function setReadModeContent(title: string, text: string): void {
+  // Convert plain text to simple paragraphs
+  const html = text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br/>')}</p>`).join('');
+  customContent = { title, html };
+  readModeEnabled = true;
+  applyReadMode();
+}
 
 async function applyReadMode(): Promise<void> {
   if (readModeEnabled) {
@@ -22,24 +31,44 @@ async function applyReadMode(): Promise<void> {
     const originalBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    const { Readability } = await import("@mozilla/readability");
+    let articleTitle = "";
+    let articleByline = "";
+    let cleanHtml = "";
+    let wordCount = 0;
+
     const DOMPurify = (await import("dompurify")).default;
 
-    const documentClone = document.cloneNode(true) as Document;
-    const article = new Readability(documentClone).parse();
-    if (!article) {
-      readModeEnabled = false;
-      alert("Cortex: Could not find readable article content on this page.");
-      return;
+    if (customContent) {
+      articleTitle = customContent.title;
+      cleanHtml = DOMPurify.sanitize(customContent.html, {
+        USE_PROFILES: { html: true },
+        FORBID_TAGS: ["style", "script", "iframe", "form", "input", "textarea", "button"],
+        RETURN_TRUSTED_TYPE: false,
+      }) as string;
+      // Strip tags for word count
+      const textOnly = customContent.html.replace(/<[^>]*>?/gm, '');
+      wordCount = textOnly.split(/\s+/).filter(Boolean).length;
+    } else {
+      const { Readability } = await import("@mozilla/readability");
+
+      const documentClone = document.cloneNode(true) as Document;
+      const article = new Readability(documentClone).parse();
+      if (!article) {
+        readModeEnabled = false;
+        alert("Cortex: Could not find readable article content on this page.");
+        return;
+      }
+
+      articleTitle = article.title ?? "";
+      articleByline = article.byline ?? "";
+      cleanHtml = DOMPurify.sanitize(article.content ?? "", {
+        USE_PROFILES: { html: true },
+        FORBID_TAGS: ["style", "script", "iframe", "form", "input", "textarea", "button"],
+        RETURN_TRUSTED_TYPE: false,
+      }) as string;
+      wordCount = (article.textContent || "").split(/\s+/).filter(Boolean).length;
     }
 
-    const cleanHtml = DOMPurify.sanitize(article.content ?? "", {
-      USE_PROFILES: { html: true },
-      FORBID_TAGS: ["style", "script", "iframe", "form", "input", "textarea", "button"],
-      RETURN_TRUSTED_TYPE: false,
-    }) as string;
-
-    const wordCount = (article.textContent || "").split(/\s+/).filter(Boolean).length;
     const readMins = Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE));
 
     chrome.storage.local.get({ activeFont: "default", rmTheme: "dark", rmFontSize: 20 }, ({ activeFont, rmTheme, rmFontSize }) => {
@@ -70,9 +99,9 @@ async function applyReadMode(): Promise<void> {
       // Meta
       const meta = document.createElement("div");
       meta.style.cssText = "margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--rm-border);";
-      meta.innerHTML = `${article.title ? `<h1 style="margin:0 0 16px 0;font-size:36px;font-weight:700;color:var(--rm-heading);line-height:1.2;">${article.title}</h1>` : ""}
+      meta.innerHTML = `${articleTitle ? `<h1 style="margin:0 0 16px 0;font-size:36px;font-weight:700;color:var(--rm-heading);line-height:1.2;">${articleTitle}</h1>` : ""}
         <div style="font-size:15px;color:var(--rm-meta);display:flex;flex-wrap:wrap;align-items:center;gap:12px;">
-          ${article.byline ? `<span>By ${article.byline}</span>` : ""}<span>·</span><span>~${readMins} min read</span>
+          ${articleByline ? `<span>By ${articleByline}</span>` : ""}<span>·</span><span>~${readMins} min read</span>
         </div>`;
 
       const contentWrap = document.createElement("div");
@@ -98,9 +127,10 @@ async function applyReadMode(): Promise<void> {
       });
 
       // Wire font size buttons to the panel
-  (sidebar as unknown as Record<string, HTMLElement>).__panel = panel;
+      (sidebar as unknown as Record<string, HTMLElement>).__panel = panel;
     });
   } else {
+    customContent = null;
     tts.stopTts();
     tts.resetState();
     setReadModeElement(null);

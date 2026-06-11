@@ -145,7 +145,12 @@ export class EngineManager {
 
       if (!this.engine) {
         const EngineClass = await this.getEngineClass();
-        this.engine = new EngineClass();
+        const mod = await import("@mlc-ai/web-llm");
+        const appConfig = {
+          ...mod.prebuiltAppConfig,
+          cacheBackend: "indexeddb" as const,
+        };
+        this.engine = new EngineClass({ appConfig });
       }
 
       this.engine.setInitProgressCallback((report: ProgressReport) => {

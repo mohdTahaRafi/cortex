@@ -27,9 +27,16 @@ import { MessageFactory } from "@/utils/message-factory";
 let rewriteEnabled = false;
 const injectedParagraphs = new WeakSet<Element>();
 
-const observer = new MutationObserver(() => {
-  if (rewriteEnabled) injectButtonsIntoParagraphs();
-});
+let observer: MutationObserver | null = null;
+
+function getObserver() {
+  if (!observer && typeof MutationObserver !== "undefined") {
+    observer = new MutationObserver(() => {
+      if (rewriteEnabled) injectButtonsIntoParagraphs();
+    });
+  }
+  return observer;
+}
 
 // ─── Button State Machine (State Pattern) ───────────────────────────────────
 
@@ -272,10 +279,10 @@ export function toggleRewriteButtons(enabled: boolean): void {
   rewriteEnabled = enabled;
   if (enabled) {
     injectButtonsIntoParagraphs();
-    observer.observe(document.body, { childList: true, subtree: true });
+    getObserver()?.observe(document.body, { childList: true, subtree: true });
   } else {
     removeAllButtons();
-    observer.disconnect();
+    getObserver()?.disconnect();
   }
 }
 

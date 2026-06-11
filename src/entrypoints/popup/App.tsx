@@ -15,6 +15,7 @@ import {
   Highlighter,
   Pencil,
   Type,
+  PanelRight,
 } from "lucide-react";
 import { ColorProfile, DEFAULT_COLOR_PROFILES } from "@/utils/messages";
 import type { AccessibilityScore } from "@/utils/messages";
@@ -411,8 +412,27 @@ export default function App() {
             Chat <BotMessageSquare />
           </Button>
         </div>
+        <div className="px-4 pb-3">
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full text-[11px] bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={async () => {
+              try {
+                const window = await chrome.windows.getCurrent();
+                if (window.id !== undefined) {
+                  await chrome.sidePanel.open({ windowId: window.id });
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+          >
+            Open Side Panel <PanelRight className="ml-1 h-3 w-3" />
+          </Button>
+        </div>
         {!activeModel && (
-          <p className="w-full text-center text-[10px] leading-relaxed text-orange-600 dark:text-orange-500">
+          <p className="w-full text-center text-[10px] pb-3 leading-relaxed text-orange-600 dark:text-orange-500">
             Please download a model to use chat.
           </p>
         )}

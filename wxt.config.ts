@@ -22,6 +22,16 @@ export default defineConfig({
       "storage",
       "unlimitedStorage",
       "tabs",
+      "sidePanel",
+    ],
+    web_accessible_resources: [
+      {
+        resources: ["pdf.worker.min.mjs"],
+        matches: ["<all_urls>"],
+      },
+    ],
+    host_permissions: [
+      "<all_urls>",
     ],
     content_security_policy: {
       extension_pages:
